@@ -61,6 +61,7 @@ type AnimationState = "idle" | "spinning" | "result"
 
 export default function LunchPicker() {
   const [restaurants, setRestaurants] = useState(initialRestaurants)
+  const [shuffledRestaurants, setShuffledRestaurants] = useState(initialRestaurants)
   const [animationState, setAnimationState] = useState<AnimationState>("idle")
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("")
   const [newRestaurant, setNewRestaurant] = useState("")
@@ -70,6 +71,16 @@ export default function LunchPicker() {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number>()
+
+  // 배열을 랜덤으로 섞는 함수 (Fisher-Yates shuffle)
+  const shuffleArray = (array: string[]) => {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
 
   const findCenterRestaurant = () => {
     const container = scrollContainerRef.current
@@ -105,6 +116,10 @@ export default function LunchPicker() {
   const startSpin = () => {
     if (restaurants.length === 0) return
 
+    // 매번 뽑기 시작할 때마다 레스토랑 순서를 랜덤으로 섞기
+    const newShuffled = shuffleArray(restaurants)
+    setShuffledRestaurants(newShuffled)
+
     setAnimationState("spinning")
     setSelectedRestaurant("")
     setParticles([])
@@ -112,18 +127,20 @@ export default function LunchPicker() {
     const container = scrollContainerRef.current
     if (!container) return
 
-    // 애니메이션 설정
-    let currentSpeed = 80 // 초기 속도
-    const animationDuration = 9000 // 9초
+    // 애니메이션 설정 - 랜덤 요소 추가
+    const initialSpeed = 60 + Math.random() * 40 // 60~100 사이의 랜덤 초기 속도
+    let currentSpeed = initialSpeed
+    const animationDuration = 7000 + Math.random() * 4000 // 7~11초 사이의 랜덤 지속 시간
+    const decayFactor = 3 + Math.random() * 2 // 3~5 사이의 랜덤 감속 계수
     const startTime = Date.now()
-    const minSpeed = 0.5 // 최소 속도 임계값
+    const minSpeed = 0.3 + Math.random() * 0.4 // 0.3~0.7 사이의 랜덤 최소 속도
 
     const animate = () => {
       const elapsed = Date.now() - startTime
       const progress = elapsed / animationDuration
 
-      // 9초 동안 점진적으로 감속 (순방향으로만) - 마지막에 거의 0에 수렴
-      currentSpeed = 80 * Math.pow(1 - progress, 4) // exponential decay로 마지막에 거의 0에 수렴
+      // 랜덤 지속 시간 동안 점진적으로 감속 (순방향으로만) - 마지막에 거의 0에 수렴
+      currentSpeed = initialSpeed * Math.pow(1 - progress, decayFactor) // 랜덤 감속 계수로 exponential decay
 
       // 속도가 임계값 이하로 떨어지거나 시간이 다 되면 애니메이션 종료
       if (currentSpeed <= minSpeed || progress >= 1) {
@@ -169,14 +186,18 @@ export default function LunchPicker() {
 
   const addRestaurant = () => {
     if (newRestaurant.trim() && !restaurants.includes(newRestaurant.trim())) {
-      setRestaurants([...restaurants, newRestaurant.trim()])
+      const updatedRestaurants = [...restaurants, newRestaurant.trim()]
+      setRestaurants(updatedRestaurants)
+      setShuffledRestaurants(updatedRestaurants) // 추가된 레스토랑도 섞인 배열에 반영
       setNewRestaurant("")
       setIsAddModalOpen(false)
     }
   }
 
   const deleteRestaurant = (restaurant: string) => {
-    setRestaurants(restaurants.filter((r) => r !== restaurant))
+    const updatedRestaurants = restaurants.filter((r) => r !== restaurant)
+    setRestaurants(updatedRestaurants)
+    setShuffledRestaurants(updatedRestaurants) // 삭제된 레스토랑도 섞인 배열에서 제거
   }
 
   const resetSpin = () => {
@@ -240,8 +261,8 @@ export default function LunchPicker() {
                 className="flex gap-4 overflow-x-hidden py-8 px-4"
                 style={{ scrollBehavior: animationState === "spinning" ? "auto" : "smooth" }}
               >
-                {/* Duplicate restaurants for seamless scrolling */}
-                {[...restaurants, ...restaurants, ...restaurants].map((restaurant, index) => (
+                {/* Duplicate shuffled restaurants for seamless scrolling */}
+                {[...shuffledRestaurants, ...shuffledRestaurants, ...shuffledRestaurants].map((restaurant, index) => (
                   <div
                     key={`${restaurant}-${index}`}
                     data-restaurant={restaurant}
