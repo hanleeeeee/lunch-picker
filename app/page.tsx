@@ -112,33 +112,21 @@ export default function LunchPicker() {
     const container = scrollContainerRef.current
     if (!container) return
 
-    // 애니메이션 설정 - 9초 동안 지속
+    // 애니메이션 설정
     let currentSpeed = 80 // 초기 속도
     const animationDuration = 9000 // 9초
     const startTime = Date.now()
+    const minSpeed = 0.5 // 최소 속도 임계값
 
     const animate = () => {
       const elapsed = Date.now() - startTime
       const progress = elapsed / animationDuration
 
-      if (progress < 1) {
-        // 9초 동안 점진적으로 감속 (순방향으로만) - 마지막에 거의 0에 수렴
-        currentSpeed = 80 * Math.pow(1 - progress, 4) // exponential decay로 마지막에 거의 0에 수렴
+      // 9초 동안 점진적으로 감속 (순방향으로만) - 마지막에 거의 0에 수렴
+      currentSpeed = 80 * Math.pow(1 - progress, 4) // exponential decay로 마지막에 거의 0에 수렴
 
-        // 현재 스크롤 위치에서 순방향으로만 이동
-        const currentScroll = container.scrollLeft
-        const newScroll = currentScroll + currentSpeed
-        const maxScroll = container.scrollWidth - container.clientWidth
-
-        // 스크롤이 끝에 도달하면 처음으로 돌아가기 (seamless scrolling)
-        if (newScroll >= maxScroll) {
-          container.scrollLeft = newScroll - maxScroll
-        } else {
-          container.scrollLeft = newScroll
-        }
-
-        animationRef.current = requestAnimationFrame(animate)
-      } else {
+      // 속도가 임계값 이하로 떨어지거나 시간이 다 되면 애니메이션 종료
+      if (currentSpeed <= minSpeed || progress >= 1) {
         // 애니메이션 완료 - 실제 DOM 위치를 기반으로 중앙에 있는 레스토랑 찾기
         const centerRestaurant = findCenterRestaurant()
 
@@ -147,7 +135,22 @@ export default function LunchPicker() {
           setAnimationState("result")
           createParticles()
         }
+        return
       }
+
+      // 현재 스크롤 위치에서 순방향으로만 이동
+      const currentScroll = container.scrollLeft
+      const newScroll = currentScroll + currentSpeed
+      const maxScroll = container.scrollWidth - container.clientWidth
+
+      // 스크롤이 끝에 도달하면 처음으로 돌아가기 (seamless scrolling)
+      if (newScroll >= maxScroll) {
+        container.scrollLeft = newScroll - maxScroll
+      } else {
+        container.scrollLeft = newScroll
+      }
+
+      animationRef.current = requestAnimationFrame(animate)
     }
 
     animate()
