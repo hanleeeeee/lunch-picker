@@ -55,6 +55,10 @@ const initialRestaurants = [
   "본죽&비빔밥",
   "진짜장짬뽕",
   "전주현대옥",
+  "옥된장",
+  "판교집",
+  "면계옥",
+  "다꼐야"
 ]
 
 type AnimationState = "idle" | "spinning" | "result"
